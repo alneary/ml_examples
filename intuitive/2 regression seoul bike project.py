@@ -1,4 +1,8 @@
 # Databricks notebook source
+# MAGIC %sh apt-get install -y graphviz
+
+# COMMAND ----------
+
 # MAGIC %md
 # MAGIC #### Purpose/Context
 # MAGIC This workbook focuses on building a predicitive model using the Seoul Bike Dataset. A brief EDA will take place before model development.
@@ -8,7 +12,9 @@
 
 # COMMAND ----------
 
-# MAGIC %pip install imodels
+# MAGIC %pip install --upgrade imodels
+# MAGIC %pip install --upgrade dtreeviz
+# MAGIC %pip install --upgrade skompiler
 
 # COMMAND ----------
 
@@ -428,6 +434,25 @@ print(r)
 
 # COMMAND ----------
 
+import dtreeviz
+from dtreeviz.models.sklearn_decision_trees import ShadowSKDTree
+from imodels.tree.viz_utils import extract_sklearn_tree_from_figs
+from skompiler import skompile
+
+# COMMAND ----------
+
+def view_tree(model, tree_num, x, y):
+    #specify nclasses = 1 when continuous variable
+    dt = extract_sklearn_tree_from_figs(model, tree_num = tree_num, n_classes = 1)
+    print(dir(dt))
+    shadow_dtree = ShadowSKDTree(dt, x, y, x.columns, 'title')
+    
+    viz_model = dtreeviz.model(shadow_dtree, x, y, x.columns, "title")
+    displayHTML(viz_model.view(scale = 1.5).svg())
+        
+
+# COMMAND ----------
+
 # MAGIC %md
 # MAGIC ### Greedy Tree 
 
@@ -439,6 +464,8 @@ from imodels import GreedyTreeRegressor, FIGSRegressorCV
 # fit the model
 gt_model = GreedyTreeRegressor()  
 gt_model.fit(X_train, y_train, feature_names=x_vars)   # fit model
+
+#gt_model.fit(X_train, y_train, feature_names=x_vars)   # fit model
 
 gt_valid_results = score_model(y_valid, gt_model.predict(X_valid), 'gt', 'valid')
 gt_train_results = score_model(y_train, gt_model.predict(X_train), 'gt', 'train')
@@ -464,6 +491,19 @@ figs_train_results = score_model(y_train, figs_model.predict(X_train), 'figs', '
 
 model_figs = figs_model.figs
 model_figs
+
+# COMMAND ----------
+
+view_tree(model_figs, 0, X_valid, y_valid.to_numpy())
+
+# COMMAND ----------
+
+#this is the code to extract the rules/logic, I couldn't get it to work, but perhaps there will be better luck in the future, or at least better doc
+#https://github.com/csinva/imodels/blob/master/notebooks/FIGS_viz_demo.ipynb
+#dt = extract_sklearn_tree_from_figs(model_figs, tree_num = 0, n_classes = 1)
+#expr = skompile(dt.score, X_valid.columns)
+#print(expr.to('sqlalchemy/sqlite', component = 1, assign_to='tree_0'))
+#print(expr.to('python/code')
 
 # COMMAND ----------
 
